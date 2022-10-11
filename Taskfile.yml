@@ -1,0 +1,23 @@
+version: '3'
+
+vars:
+  HASH: { sh: git rev-parse --short HEAD }
+  BRANCH: { sh: git rev-parse --abbrev-ref HEAD }
+  SERVICE_NAME: svcgen
+  BINARY_PATH: ./bin/{{.SERVICE_NAME}}
+
+tasks:
+
+  generate:
+    cmds:
+      - go generate -x ./...
+
+  analysis:
+    dir: ./
+    cmds:
+      - golangci-lint run -v --new-from-rev `git merge-base master {{.BRANCH}}` ./...
+
+  build:
+    deps: [generate]
+    cmds:
+      - CGO_ENABLED=0 go build -ldflags "-X main.Version={{.HASH}} -X main.Hash={{.HASH}}" -a -o {{.BINARY_PATH}} .
