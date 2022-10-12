@@ -5,7 +5,7 @@ import (
 )
 
 func (svc ServiceData) RenderConfig() *File {
-	file := NewFilePathName("config", "cmd")
+	file := NewFile("cmd")
 
 	viperPackage := "github.com/spf13/viper"
 	file.ImportName(viperPackage, "viper")

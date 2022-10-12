@@ -5,7 +5,11 @@ import (
 )
 
 func (svc ServiceData) RenderServiceErrors() *File {
-	file := NewFilePathName("errors", "service")
+	file := NewFile("service")
+
+	file.Var().Defs(
+		Id("ErrEmptyString").Op("=").Qual("errors", "New").Call(Lit("empty string")),
+	)
 
 	return file
 }

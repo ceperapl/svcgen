@@ -37,9 +37,9 @@ func init() {
 
 	// init config from config.yaml if exists
 	if !isFileExists(configName) {
-		log.Println("config file is missing")
 		return
 	}
+	log.Println("Reading configurations from config.yaml file...")
 	yamlFile, err := ioutil.ReadFile(configName)
 	if err != nil {
 		log.Fatalf("failed to read config file:%v", err)
@@ -48,6 +48,7 @@ func init() {
 	if err != nil {
 		log.Fatalf("failed to unmarshal yaml: %v", err)
 	}
+	log.Println("Config was loaded successfully")
 }
 
 func isFileExists(path string) bool {

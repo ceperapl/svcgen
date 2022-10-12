@@ -7,7 +7,7 @@ import (
 )
 
 func (svc ServiceData) RenderServer() *File {
-	file := NewFilePathName("server", "cmd")
+	file := NewFile("cmd")
 
 	endpointsPackage := path.Join(svc.ModulePath, "pkg/endpoints")
 	file.ImportName(endpointsPackage, "endpoints")
@@ -26,6 +26,8 @@ func (svc ServiceData) RenderServer() *File {
 	file.ImportName(muxPackage, "mux")
 	grpcPackage := "google.golang.org/grpc"
 	file.ImportName(grpcPackage, "grpc")
+	httpPackage := "net/http"
+	file.ImportName(httpPackage, "http")
 
 	file.Func().Id("RunServer").Params().Error().Block(
 		Line(),
@@ -59,8 +61,8 @@ func (svc ServiceData) RenderServer() *File {
 		Comment("Start the HTTP server"),
 		Id("httpServerAddr").Op(":=").Qual("fmt", "Sprintf").Call(Lit("0.0.0.0:%d"), Id("config").Dot("HTTPServer").Dot("Port")),
 		Id("logger").Dot("Log").Call(Lit("transport"), Lit("HTTP"), Lit("addr"), Id("httpServerAddr")),
-		Op("go").Func().Params().Block(
-			Id("doneC").Op("<-").Qual("http", "ListenAndServe").Call(Id("httpServerAddr"), Id("rootMux")),
+		Go().Func().Params().Block(
+			Id("doneC").Op("<-").Qual(httpPackage, "ListenAndServe").Call(Id("httpServerAddr"), Id("rootMux")),
 		).Call(),
 		Line(),
 		Comment("Configure the GRPC server"),
@@ -76,7 +78,7 @@ func (svc ServiceData) RenderServer() *File {
 		Qual(grpctransportPackage, "RegisterHelloServer").Call(Id("baseServer"), Id("grpcServer")),
 		Comment("Start the GRPC server"),
 		Id("logger").Dot("Log").Call(Lit("transport"), Lit("GRPC"), Lit("addr"), Id("grpcServerAddr")),
-		Op("go").Func().Params().Block(
+		Go().Func().Params().Block(
 			Id("doneC").Op("<-").Id("baseServer").Dot("Serve").Call(Id("grpcListener")),
 		).Call(),
 		Line(),

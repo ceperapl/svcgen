@@ -1,8 +1,6 @@
 version: '3'
 
 vars:
-  HASH: { sh: git rev-parse --short HEAD }
-  BRANCH: { sh: git rev-parse --abbrev-ref HEAD }
   SERVICE_NAME: service
   BINARY_PATH: ./bin/{{`{{.SERVICE_NAME}}`}}
   SEARCH_PROTOFILES: { sh: find ./api/protobuf-spec -type f -name "*.proto" -printf "%f " }
@@ -19,9 +17,9 @@ tasks:
   analysis:
     dir: ./
     cmds:
-      - golangci-lint run -v --new-from-rev `git merge-base master {{`{{.BRANCH}}`}}` ./...
+      - golangci-lint run -v ./...
 
   build:
     deps: [generate]
     cmds:
-      - CGO_ENABLED=0 go build -ldflags "-X main.Version={{`{{.HASH}}`}} -X main.Hash={{`{{.HASH}}`}}" -a -o {{`{{.BINARY_PATH}}`}} .
+      - CGO_ENABLED=0 go build -a -o {{`{{.BINARY_PATH}}`}} .

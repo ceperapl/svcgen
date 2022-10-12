@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"io"
+	"log"
 	"os"
 	"path"
+	"sort"
 	"text/template"
 
 	"github.com/company/svcgen/renders"
@@ -45,11 +47,10 @@ func addRootFlags(rootCmd *cobra.Command) {
 
 type goFiles map[string]*File
 
+type goTemplates map[string]string
+
 func generateService() error {
 	servicePath := path.Join(config.ServicePath, config.ServiceName)
-	if err := createFolderStructure(servicePath); err != nil {
-		return err
-	}
 
 	// generate go files
 	svcData := renders.ServiceData{
@@ -71,14 +72,24 @@ func generateService() error {
 		"pkg/utils/healthcheck/healthcheck.go": svcData.RenderHealthcheck(),
 	}
 
-	for filename, goFile := range goFiles {
-		file, err := os.Create(path.Join(servicePath, filename))
-		if err != nil {
-			return err
-		}
-		file.Sync()
-		writeFile(file, goFile)
-		file.Close()
+	templates := goTemplates{
+		"Taskfile.yml":                  "templates/Taskfile.yml.gotmpl",
+		"api/protobuf-spec/hello.proto": "templates/hello.proto.gotmpl",
+		"api/swagger-spec/.placeholder": "templates/placeholder.gotmpl",
+		".gitignore":                    "templates/gitignore.gotmpl",
+		"docker-compose.yml":            "templates/docker-compose.yml.gotmpl",
+		"Dockerfile":                    "templates/Dockerfile.gotmpl",
+		"go.mod":                        "templates/go.mod.gotmpl",
+		"README.md":                     "templates/README.md.gotmpl",
+	}
+
+	folders := getFolderStructure(goFiles, templates)
+	if err := createFolders(servicePath, folders); err != nil {
+		return err
+	}
+
+	if err := generateGoFiles(goFiles, servicePath); err != nil {
+		return err
 	}
 
 	// generate files from templates
@@ -87,55 +98,19 @@ func generateService() error {
 		Path:       config.ServicePath,
 		ModulePath: config.ModulePath,
 	}
-	if err := svc.generateTaskfile(servicePath); err != nil {
-		return err
-	}
-	if err := svc.generateProtobuf(servicePath); err != nil {
-		return err
-	}
-	if err := svc.generateGitignore(servicePath); err != nil {
-		return err
-	}
-	if err := svc.generateDockerCompose(servicePath); err != nil {
-		return err
-	}
-	if err := svc.generateDockerfile(servicePath); err != nil {
-		return err
-	}
-	if err := svc.generateGoMod(servicePath); err != nil {
-		return err
-	}
-	if err := svc.generateReadme(servicePath); err != nil {
+	if err := svc.generateFiles(templates, servicePath); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func createFolderStructure(servicePath string) error {
-	if err := os.MkdirAll(path.Join(servicePath, "api/protobuf-spec"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(path.Join(servicePath, "api/swagger-spec"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(path.Join(servicePath, "cmd"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(path.Join(servicePath, "pkg/endpoints/middleware"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(path.Join(servicePath, "pkg/service"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(path.Join(servicePath, "pkg/transport/grpc"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(path.Join(servicePath, "pkg/transport/http"), os.ModePerm); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(path.Join(servicePath, "pkg/utils/healthcheck"), os.ModePerm); err != nil {
-		return err
+func createFolders(servicePath string, folders []string) error {
+	for _, folder := range folders {
+		if err := os.MkdirAll(path.Join(servicePath, folder), os.ModePerm); err != nil {
+			return err
+		}
+		log.Printf("Created folder %s", path.Join(servicePath, folder))
 	}
 	return nil
 }
@@ -174,30 +149,49 @@ func (svc Service) generateFile(filename, templatePath string) error {
 	return err
 }
 
-func (svc Service) generateTaskfile(servicePath string) error {
-	return svc.generateFile(path.Join(servicePath, "Taskfile.yml"), "templates/Taskfile.yml.gotmpl")
+func (svc Service) generateFiles(templates map[string]string, servicePath string) error {
+	for filepath, templatePath := range templates {
+		if err := svc.generateFile(path.Join(servicePath, filepath), templatePath); err != nil {
+			return err
+		}
+		log.Printf("Generated file %s", path.Join(servicePath, filepath))
+	}
+	return nil
 }
 
-func (svc Service) generateProtobuf(servicePath string) error {
-	return svc.generateFile(path.Join(servicePath, "api/protobuf-spec/hello.proto"), "templates/hello.proto.gotmpl")
+func getFolderStructure(files map[string]*File, templates map[string]string) []string {
+	var folders []string
+	set := make(map[string]struct{})
+	for filepath, _ := range files {
+		dir := path.Dir(filepath)
+		if _, ok := set[dir]; !ok {
+			folders = append(folders, dir)
+			set[dir] = struct{}{}
+		}
+	}
+	for filepath, _ := range templates {
+		dir := path.Dir(filepath)
+		if _, ok := set[dir]; !ok {
+			folders = append(folders, dir)
+			set[dir] = struct{}{}
+		}
+	}
+	sort.Strings(folders)
+	return folders
 }
 
-func (svc Service) generateGitignore(servicePath string) error {
-	return svc.generateFile(path.Join(servicePath, ".gitignore"), "templates/gitignore.gotmpl")
-}
-
-func (svc Service) generateDockerCompose(servicePath string) error {
-	return svc.generateFile(path.Join(servicePath, "docker-compose.yml"), "templates/docker-compose.yml.gotmpl")
-}
-
-func (svc Service) generateDockerfile(servicePath string) error {
-	return svc.generateFile(path.Join(servicePath, "Dockerfile"), "templates/Dockerfile.gotmpl")
-}
-
-func (svc Service) generateGoMod(servicePath string) error {
-	return svc.generateFile(path.Join(servicePath, "go.mod"), "templates/go.mod.gotmpl")
-}
-
-func (svc Service) generateReadme(servicePath string) error {
-	return svc.generateFile(path.Join(servicePath, "README.md"), "templates/README.md.gotmpl")
+func generateGoFiles(files map[string]*File, servicePath string) error {
+	for filepath, goFile := range files {
+		file, err := os.Create(path.Join(servicePath, filepath))
+		if err != nil {
+			return err
+		}
+		file.Sync()
+		if err := writeFile(file, goFile); err != nil {
+			return err
+		}
+		file.Close()
+		log.Printf("Generated file %s", path.Join(servicePath, filepath))
+	}
+	return nil
 }
