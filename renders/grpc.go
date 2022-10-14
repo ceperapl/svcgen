@@ -9,6 +9,8 @@ import (
 func (svc ServiceData) RenderGrpc() *File {
 	file := NewFile("grpc")
 
+	hellov1Package := path.Join(svc.ModulePath, "gen/proto/go/hello/v1")
+	file.ImportAlias(hellov1Package, "hellov1")
 	endpointsPackage := path.Join(svc.ModulePath, "pkg/endpoints")
 	file.ImportName(endpointsPackage, "endpoints")
 
@@ -26,7 +28,7 @@ func (svc ServiceData) RenderGrpc() *File {
 	file.Func().Id("NewGRPCServer").Params(
 		Id("endpoints").Qual(endpointsPackage, "Endpoints"),
 		Id("logger").Qual(logPackage, "Logger"),
-	).Id("HelloServer").Block(
+	).Qual(hellov1Package, "HelloServiceServer").Block(
 		Id("options").Op(":=").Index().Qual(grpctransportPackage, "ServerOption").Values(
 			Qual(grpctransportPackage, "ServerErrorHandler").Call(Qual(transportPackage, "NewLogErrorHandler").Call(Id("logger"))),
 		),
@@ -45,21 +47,21 @@ func (svc ServiceData) RenderGrpc() *File {
 
 	file.Func().Params(Id("g").Op("*").Id("grpcServer")).Id("Hello").Params(
 		Id("ctx").Qual("context", "Context"),
-		Id("req").Op("*").Id("HelloRequest"),
-	).Params(Op("*").Id("HelloResponse"), Error()).Block(
+		Id("req").Op("*").Qual(hellov1Package, "HelloRequest"),
+	).Params(Op("*").Qual(hellov1Package, "HelloResponse"), Error()).Block(
 		List(Id("_"), Id("resp"), Err()).Op(":=").Id("g").Dot("hello").Dot("ServeGRPC").Call(Id("ctx"), Id("req")),
 		If(
 			Err().Op("!=").Nil(),
 		).Block(
 			Return(Nil(), Err()),
 		),
-		Return(Id("resp").Assert(Op("*").Id("HelloResponse")), Nil()),
+		Return(Id("resp").Assert(Op("*").Qual(hellov1Package, "HelloResponse")), Nil()),
 	)
 
 	file.Func().Id("decodeGRPCHelloRequest").Params(Id("_").Qual("context", "Context"), Id("grpcReq").Interface()).Params(
 		Interface(), Error(),
 	).Block(
-		Id("req").Op(":=").Id("grpcReq").Assert(Op("*").Id("HelloRequest")),
+		Id("req").Op(":=").Id("grpcReq").Assert(Op("*").Qual(hellov1Package, "HelloRequest")),
 		Return(Qual(endpointsPackage, "HelloRequest").Values(Dict{
 			Id("Name"): Id("req").Dot("Name"),
 		}), Nil()),
@@ -69,7 +71,7 @@ func (svc ServiceData) RenderGrpc() *File {
 		Interface(), Error(),
 	).Block(
 		Id("resp").Op(":=").Id("response").Assert(Qual(endpointsPackage, "HelloResponse")),
-		Return(Op("&").Id("HelloResponse").Values(Dict{
+		Return(Op("&").Qual(hellov1Package, "HelloResponse").Values(Dict{
 			Id("Greeting"): Id("resp").Dot("Greeting"),
 		}), Nil()),
 	)

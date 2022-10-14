@@ -9,6 +9,8 @@ import (
 func (svc ServiceData) RenderServer() *File {
 	file := NewFile("cmd")
 
+	hellov1Package := path.Join(svc.ModulePath, "gen/proto/go/hello/v1")
+	file.ImportAlias(hellov1Package, "hellov1")
 	endpointsPackage := path.Join(svc.ModulePath, "pkg/endpoints")
 	file.ImportName(endpointsPackage, "endpoints")
 	servicePackage := path.Join(svc.ModulePath, "pkg/service")
@@ -75,7 +77,7 @@ func (svc ServiceData) RenderServer() *File {
 			Return(Err()),
 		),
 		Id("baseServer").Op(":=").Qual(grpcPackage, "NewServer").Call(),
-		Qual(grpctransportPackage, "RegisterHelloServer").Call(Id("baseServer"), Id("grpcServer")),
+		Qual(hellov1Package, "RegisterHelloServiceServer").Call(Id("baseServer"), Id("grpcServer")),
 		Comment("Start the GRPC server"),
 		Id("logger").Dot("Log").Call(Lit("transport"), Lit("GRPC"), Lit("addr"), Id("grpcServerAddr")),
 		Go().Func().Params().Block(

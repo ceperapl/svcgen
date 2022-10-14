@@ -73,14 +73,15 @@ func generateService() error {
 	}
 
 	templates := goTemplates{
-		"Taskfile.yml":                  "templates/Taskfile.yml.gotmpl",
-		"api/protobuf-spec/hello.proto": "templates/hello.proto.gotmpl",
-		"api/swagger-spec/.placeholder": "templates/placeholder.gotmpl",
-		".gitignore":                    "templates/gitignore.gotmpl",
-		"docker-compose.yml":            "templates/docker-compose.yml.gotmpl",
-		"Dockerfile":                    "templates/Dockerfile.gotmpl",
-		"go.mod":                        "templates/go.mod.gotmpl",
-		"README.md":                     "templates/README.md.gotmpl",
+		"Taskfile.yml":                           "templates/Taskfile.yml.gotmpl",
+		"api/protobuf-spec/hello/v1/hello.proto": "templates/hello.proto.gotmpl",
+		"api/protobuf-spec/buf.yaml":             "templates/buf.yaml.gotmpl",
+		".gitignore":                             "templates/gitignore.gotmpl",
+		"docker-compose.yml":                     "templates/docker-compose.yml.gotmpl",
+		"Dockerfile":                             "templates/Dockerfile.gotmpl",
+		"go.mod":                                 "templates/go.mod.gotmpl",
+		"README.md":                              "templates/README.md.gotmpl",
+		"buf.gen.yaml":                           "templates/buf.gen.yaml.gotmpl",
 	}
 
 	folders := getFolderStructure(goFiles, templates)
