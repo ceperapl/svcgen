@@ -5,6 +5,18 @@ import (
 )
 
 func (svc ServiceData) RenderServiceErrors() *File {
+
+	/*
+		package service
+
+		import "errors"
+
+		var (
+			ErrEmptyString = errors.New("empty string")
+		)
+
+	*/
+
 	file := NewFile("service")
 
 	file.Var().Defs(
